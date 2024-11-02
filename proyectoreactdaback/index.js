@@ -59,7 +59,7 @@ app.post("/login", (req, res) => {
 });
 
 app.get("/getnombre", (req, res) => {
-    const DNI = req.query.DNI; // Cambiado a req.query
+    const DNI = req.query.DNI;
     db.query('SELECT nomb FROM usuario WHERE idus = ?', [DNI], (err, result) => {
         if (err) {
             console.error(err);
@@ -70,7 +70,7 @@ app.get("/getnombre", (req, res) => {
 });
 
 app.get("/getlibros", (req, res) => {
-    db.query('SELECT titl, auto, cate, stck, prec FROM libro WHERE stck > 0',
+    db.query('SELECT idli, titl, auto, cate, stck, prec FROM libro WHERE stck > 0',
         (err, result) =>{
             if(err){
                 console.log(err);
@@ -80,6 +80,42 @@ app.get("/getlibros", (req, res) => {
         }
     )
 })
+
+app.post("/comprarlibros", (req, res) => {
+    console.log(req.body);
+    const {DNI, librosSeleccionados} = req.body;
+    if(librosSeleccionados === 0){
+        return res.send("No hay libros seleccionados");
+    }
+    librosSeleccionados.forEach((element) => {
+        const { idli, cantidad, precio } = element;
+        db.query('INSERT INTO compra (feco, cantidad, prec, idus, idli, stat) VALUES (NOW(), ?, ?, ?, ?, 1)', [cantidad, precio, DNI, idli], (err) => {
+            if(err) {
+                console.log(err);
+            }
+        })
+        db.query('UPDATE libro SET stck = stck - ? WHERE idli = ?', [cantidad, idli], (err) => {
+            if(err){
+                console.log(err);
+            }
+        })
+    });
+    res.send("Compra realizada con éxito y stock actualizado.")
+})
+
+app.get("/getcompras", (req, res) => {
+    const DNI = req.query.DNI;
+    db.query('SELECT idco, feco, prec, stat FROM compra WHERE idus = ?', [DNI],
+        (err, result) => {
+            if (err) {
+                console.log(err);
+                res.status(500).send("Error al consultar las compras.");
+            } else {
+                res.send(result);
+            }
+        }
+    );
+});
 
 app.listen(3100,() =>{
     console.log("Corriendo en puerto 3100");

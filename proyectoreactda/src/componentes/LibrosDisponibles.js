@@ -1,9 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import Axios from 'axios';
 import 'bootstrap/dist/css/bootstrap.min.css';
+import { useAuth } from '../rutasegura/context';
+import { useNavigate } from 'react-router-dom';
 
 const LibrosDisponibles = () => {
     const [libros, setLibros] = useState([]);
+    const [librosSeleccionados, setLibrosSeleccionados] = useState([]);
+    const { DNI } = useAuth();
+    const navigate = useNavigate();
     const getLibros = () => {
         Axios.get("http://localhost:3100/getlibros").then((response) => {
             setLibros(response.data);
@@ -11,6 +16,40 @@ const LibrosDisponibles = () => {
             console.log("libros sacados de backend");
         });
     };
+
+    const checklistLibro = (libro) => {
+        setLibrosSeleccionados((prevSeleccionados) => {
+            if (prevSeleccionados.some(item => item.idli === libro.idli)) {
+                return prevSeleccionados.filter((item) => item.idli !== libro.idli);
+            } else {
+                return [...prevSeleccionados, libro];
+            }
+        });
+    }
+
+    const realizarCompra = () =>{
+        if (librosSeleccionados.length === 0) {
+            alert("No hay libros seleccionados.");
+            return;
+        }
+        
+        Axios.post("http://localhost:3100/comprarLibros", {
+            DNI, librosSeleccionados: librosSeleccionados.map(libro => ({
+                
+                idli: libro.idli,
+                cantidad: 1, 
+                precio: libro.prec
+            }))
+            
+        }).then(() => {
+            alert("Compra realizada con éxito!");
+            getLibros();
+            setLibrosSeleccionados([]);
+        }).catch((err)=> {
+            console.log(err);
+        })
+        
+    }
 
     useEffect(() => {
         getLibros();
@@ -49,7 +88,10 @@ const LibrosDisponibles = () => {
                         <td style={{fontFamily: 'Verdana, sans-serif'}}>{val.stck}</td>
                         <td style={{fontFamily: 'Verdana, sans-serif'}}>${val.prec}</td>
                         <td className="text-center">
-                                        <input type="checkbox" style={{ verticalAlign: 'middle' }} />
+                            <input type="checkbox" style={{ verticalAlign: 'middle' }} 
+                            onChange={() => checklistLibro(val)} 
+                            checked={librosSeleccionados.some(item => item.idli === val.idli)}
+                            />
                         </td>
                         </tr>
                     ))
@@ -74,7 +116,9 @@ const LibrosDisponibles = () => {
                     padding: '10px 20px',
                     width: '160px',
                     height: '60px'
-                }}>Comprar</button>
+                }}
+                onClick={realizarCompra}
+                >Comprar</button>
                 
             </div>
             <div className="text-center mt-4">
@@ -87,7 +131,9 @@ const LibrosDisponibles = () => {
                     padding: '10px 20px',
                     width: '160px',
                     
-                }}>Cancelar</button>
+                }}
+                onClick={() => navigate('/login-seguro/libreria')}
+                >Cancelar</button>
             </div>
         </div>
     );
